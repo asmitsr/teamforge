@@ -61,3 +61,27 @@ request is non-2xx. (Earlier runs on the same machine measured p95 76.7ms and
 ```bash
 cd server && npm run load
 ```
+
+## Live verification — 8 Nov 2026, 15:55 Dhaka (after submission)
+
+The deployed backend was checked live at
+`https://teamforge-production-8d4a.up.railway.app` (Railway trial, Atlas M0 Mumbai):
+
+- `/api/health` 200, `/api/metrics` 200 (uptime ~2.9h), `/api/board` 200 with the
+  real demo data (Code Warriors 2/4, Demo Four listed).
+- 100 concurrent users, 30s, Node fetch harness: **451 requests, 451 OK, 0 errors.**
+  Latency, however, is NOT quotable from this sandbox: p50 5.9s, p95 14.7s — and
+  the same harness against the Vercel frontend (a global CDN edge) measured p50
+  5.8s, p95 7.8s. A CDN edge is not that slow; the sandbox's own egress path adds
+  seconds under 100-way concurrency, so these numbers measure the test rig, not
+  the server. At 20 concurrent users the picture is consistent: Railway board p50
+  564ms / p95 1,227ms vs Vercel p50 545ms / p95 666ms — the same ~0.5s floor on
+  both, i.e. the measurement path, not the backend. Single-request TTFB to the
+  board was ~1.16s (TLS 0.09s, server ~1.07s).
+- **Honest conclusion:** the live endpoint is up, correct, and error-free under
+  load, but no live p95 can be honestly quoted from this environment. The PASS
+  verdict above remains the sandbox measurement, labelled as such. Do not present
+  the 14.7s figure as a live result — it is a rig artifact.
+- Note: autocannon (the repo's own tool) could not connect to the Railway URL from
+  this sandbox at all (all requests errored, 0 responses) while curl/fetch worked
+  — another sign the sandbox egress path, not the server, is the problem.
