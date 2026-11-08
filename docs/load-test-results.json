@@ -1,0 +1,24 @@
+{
+  "endpoint": "GET /api/board",
+  "connections": 100,
+  "durationSeconds": 30,
+  "requests": 64542,
+  "status_2xx": 64542,
+  "status_non2xx": 0,
+  "throughput_rps": 2152,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+    "p50": 38,
+    "p90": 53,
+    "p95_interpolated": 67.67,
+    "p97_5": 75,
+    "p99": 109,
+    "mean": 46.5,
+    "max": 1683
+  },
+  "target_p95_ms": 200,
+  "verdict": "PASS",
+  "measuredAt": "2026-11-08T04:27:12.153Z",
+  "note": "Local machine, in-memory MongoDB replica set. Production numbers will differ; see docs/LOAD_TEST_REPORT.md."
+}
