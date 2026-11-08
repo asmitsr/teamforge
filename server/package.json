@@ -1,0 +1,36 @@
+{
+  "name": "teamforge-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TeamForge — race-proof team formation service (Hack4Hack PS1)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "jest --runInBand --testTimeout=60000",
+    "test:race": "jest tests/race.test.js --runInBand --testTimeout=60000",
+    "seed": "node scripts/seed.js",
+    "seed:memory": "node scripts/seed.js --memory",
+    "load": "node scripts/load-test.js",
+    "chaos": "node scripts/chaos-test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.0",
+    "socket.io": "^4.7.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "autocannon": "^9.0.0",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.5.0",
+    "supertest": "^7.0.0"
+  },
+  "jest": { "testEnvironment": "node", "testTimeout": 60000 }
+}
