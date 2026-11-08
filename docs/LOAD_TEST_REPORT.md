@@ -3,23 +3,23 @@
 **Endpoint:** `GET /api/board` (public board: teams + people looking for teammates)
 **Target:** p95 < 200ms with 100 concurrent users (PS1 requirement)
 **Tool:** autocannon v9 (`server/scripts/load-test.js`, `npm run load`)
-**Date:** 8 Nov 2026, 04:27 UTC (re-run by the independent verifier, measured in this sandbox)
+**Date:** 8 Nov 2026, 04:53 UTC (re-run by the independent post-redesign verifier, measured in this sandbox)
 **Dataset:** 50 teams + 200 users on the board (seeded by the script)
 
 ## Result — PASS
 
 | Metric | Value |
 |---|---|
-| Requests (30s) | 64,542 |
-| Throughput | 2,152 req/s |
-| Status 2xx / non-2xx | 64,542 / 0 |
+| Requests (30s) | 65,685 |
+| Throughput | 2,190 req/s |
+| Status 2xx / non-2xx | 65,685 / 0 |
 | Errors / timeouts | 0 / 0 |
-| Latency p50 | 38 ms |
-| Latency p90 | 53 ms |
-| **Latency p95** | **67.7 ms** (interpolated — see Method) |
-| Latency p97.5 | 75 ms |
-| Latency p99 | 109 ms |
-| Latency mean / max | 46.5 ms / 1,683 ms |
+| Latency p50 | 37 ms |
+| Latency p90 | 49 ms |
+| **Latency p95** | **72.3 ms** (interpolated — see Method) |
+| Latency p97.5 | 84 ms |
+| Latency p99 | 113 ms |
+| Latency mean / max | 45.8 ms / 1,877 ms |
 | **Verdict vs 200ms target** | **PASS** |
 
 Raw JSON: [`docs/load-test-results.json`](load-test-results.json) (written by the script).
@@ -30,17 +30,17 @@ Raw JSON: [`docs/load-test-results.json`](load-test-results.json) (written by th
 teams + 200 users, starts the real Express server, then runs autocannon with
 100 connections for 30s against `/api/board`. No mocks: real HTTP, real DB.
 autocannon v9 reports p90 and p97.5 but no p95, so p95 is linearly interpolated
-between them (53 + (75−53)·⅔ = 67.7ms) and p97.5 is reported alongside it so the
+between them (49 + (84−49)·⅔ = 72.3ms) and p97.5 is reported alongside it so the
 interpolation can be checked. The script exits non-zero if p95 ≥ 200ms or any
-request is non-2xx. (An earlier run on the same machine measured p95 76.7ms;
-the number varies run to run, both well under the target.)
+request is non-2xx. (Earlier runs on the same machine measured p95 76.7ms and
+67.7ms; the number varies run to run, all well under the target.)
 
 ## What the numbers mean — and what they do not
 
 - The board is cached in-process for ≤5s and invalidated on every team mutation
   (see DESIGN.md). This run measures the **cached production path**: most
   requests are cache hits; the ~5s cache refreshes under load are the slow tail
-  (max 1,683ms is one such refresh).
+  (max 1,877ms is one such refresh).
 - **Uncached baseline, same machine:** an earlier run without the cache measured
   p50 368ms, p95 ~558ms, p99 915ms at the same 100 users — a FAIL. The independent
   verifier re-measured the uncached path (filtered query `?q=`, never cached) on
