@@ -61,7 +61,8 @@ must stay correct when hundreds click at the same moment.
   the maximum (4) is enforced atomically on every join/accept.
 - **Board speed:** the hottest read, cached in-process for ≤5s **and invalidated
   on every team mutation** (emitBoard clears it). Measured here: uncached p95
-  ~511–558ms at 100 concurrent users, cached p95 67.7ms on verifier re-run (target <200ms). Filtered
+  ~511–558ms at 100 concurrent users, cached p95 72.3ms on the post-redesign
+  verifier re-run (earlier runs 67.7ms, 76.7ms; target <200ms). Filtered
   queries are never cached. Trade-off: per-instance cache; two instances could
   disagree for ≤5s — a shared cache is the first "one more week" item.
 ## Trade-offs (defended)
