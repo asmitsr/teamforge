@@ -5,8 +5,8 @@
 One sentence: a hackathon team-formation service where 50 people can click the
 last seat at the same instant and **exactly one** gets it — proven by an automated test.
 
-- Live demo: *(TODO — deploy, see below)*
-- Repo: `https://github.com/asmitsr/teamforge` *(TODO — create the repo, push this code)*
+- Live demo: https://teamforge-mu.vercel.app (frontend on Vercel; backend live on Railway https://teamforge-production-8d4a.up.railway.app)
+- Repo: https://github.com/asmitsr/teamforge
 
 ## What it does
 
@@ -17,7 +17,7 @@ last seat at the same instant and **exactly one** gets it — proven by an autom
 - Audit log of every team change (who, what, when)
 - Idempotent mutations (safe double-clicks / retries), JWT auth, rate limits, zod validation
 - 36 API tests including a real 50-way race test, running in GitHub Actions
-- Seed script: 10,000 users + 2,000 teams in 3.2s (verifier re-run) · Load test: board p95 **67.7ms** at 100 concurrent users (target < 200ms, verifier re-run) · Chaos test: SIGKILL mid-join, nothing corrupted
+- Seed script: 10,000 users + 2,000 teams in 3.2s (verifier re-run) · Load test: board p95 **72.3ms** at 100 concurrent users (target < 200ms, verifier re-run 8 Nov 2026, sandbox — see docs/LOAD_TEST_REPORT.md) · Chaos test: SIGKILL mid-join, nothing corrupted
 
 ## Run it in 5 minutes
 
@@ -66,12 +66,13 @@ Real-time: Socket.io — `board:update` to everyone, `team:update` to room `team
 
 1. **Database:** MongoDB Atlas, M0 free cluster — it is a replica set, which
    transactions need. Copy the connection string.
-2. **Server:** Render (or Railway) free web service. Root: `server/`,
+2. **Server:** Railway trial web service (no card; Render was tried first but
+   needs a card even for Free — see DEPLOY.md). Root: `server/`,
    build `npm install`, start `npm start`. Env vars: `MONGODB_URI` (Atlas),
    `JWT_SECRET` (long random string), `CLIENT_URL` (your Vercel URL),
-   `PORT` (Render sets it).
+   `PORT` (Railway sets it).
 3. **Client:** Vercel. Root: `client/`, build `npm run build`, output `dist`.
-   Env var: `VITE_API_URL=https://<your-render-service>.onrender.com`.
+   Env var: `VITE_API_URL=https://<your-railway-service>.up.railway.app`.
 4. Then `npm run seed` against the Atlas URI (once) for demo data, and put
    the live URL in `SUBMISSION.md`.
 
@@ -94,7 +95,9 @@ are in [`docs/DESIGN.md`](docs/DESIGN.md). The numbers are in
   that key until expiry (safe side — never double-applies).
 - No email verification, no password reset, no file uploads (PS1 does not need them).
 - Load-test numbers are from this dev sandbox (4 CPUs, in-memory MongoDB), not
-  production hardware — re-run against the deployed URL before quoting them.
+  production hardware. A live check on 8 Nov 2026 confirmed the deployed board
+  is up and error-free under 100 concurrent users, but no live p95 can be
+  honestly quoted from this sandbox — see docs/LOAD_TEST_REPORT.md.
 - The load test measures the cached board path (see DESIGN.md); the uncached
   baseline on this machine was p95 ~558ms and is reported, not hidden.
 
