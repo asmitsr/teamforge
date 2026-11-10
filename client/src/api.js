@@ -16,6 +16,7 @@ export async function request(path, { method = 'GET', body, token, idempotencyKe
   return data;
 }
 export const api = {
+  captcha: () => request('/api/captcha'),
   register: (d) => request('/api/auth/register', { method: 'POST', body: d }),
   login: (d) => request('/api/auth/login', { method: 'POST', body: d }),
   board: (q) => request('/api/board' + (q ? `?q=${encodeURIComponent(q)}` : '')),

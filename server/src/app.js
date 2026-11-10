@@ -17,6 +17,7 @@ function createApp() {
   // load test (and real users behind one NAT). The board is read-only,
   // capped at 50 rows, lean() queries on indexed fields — see DESIGN.md.
   app.get('/api/health', (req, res) => res.json({ ok: true, hackathon: config.hackathonId, time: new Date().toISOString() }));
+  app.use('/api/captcha', apiLimiter, require('./routes/captcha'));
   app.use('/api/auth', apiLimiter, require('./routes/auth'));
   app.use('/api/teams', apiLimiter, require('./routes/teams'));
   app.use('/api/board', require('./routes/board'));

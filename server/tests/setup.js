@@ -16,14 +16,25 @@ async function init() {
 async function close() { await mongoose.disconnect(); if (replset) await replset.stop(); }
 
 let n = 0;
+// Fetch a captcha and solve its arithmetic question, the way the real
+// frontend does — the answer is never sent by the server.
+async function getCaptcha(api) {
+  const res = await api.get('/api/captcha');
+  if (res.status !== 200) throw new Error(`captcha failed: ${res.status} ${JSON.stringify(res.body)}`);
+  const m = String(res.body.question).match(/(\d+)\s*([+-])\s*(\d+)/);
+  if (!m) throw new Error(`unparsable captcha question: ${res.body.question}`);
+  const answer = m[2] === '+' ? Number(m[1]) + Number(m[3]) : Number(m[1]) - Number(m[3]);
+  return { captchaId: res.body.captchaId, captchaAnswer: String(answer) };
+}
 async function registerUser(api, overrides = {}) {
   n += 1;
   const email = overrides.email || `user${Date.now()}-${n}@test.dev`;
+  const captcha = await getCaptcha(api);
   const res = await api.post('/api/auth/register').send({
     name: overrides.name || `User ${n}`, email, password: 'Password123',
     skills: overrides.skills || ['React'], timezone: overrides.timezone || 'Asia/Dhaka',
     utcOffset: overrides.utcOffset !== undefined ? overrides.utcOffset : 6,
-    bio: overrides.bio || '',
+    bio: overrides.bio || '', ...captcha,
   });
   if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { token: res.body.token, user: res.body.user };
@@ -41,4 +52,4 @@ async function getTeam(api, token, teamId) {
   if (res.status !== 200) throw new Error(`get team failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body.team;
 }
-module.exports = { init, close, registerUser, createTeam, getTeam };
+module.exports = { init, close, registerUser, createTeam, getTeam, getCaptcha };

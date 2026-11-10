@@ -1,22 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, saveAuth } from '../api.js';
 export default function Login({ onAuth }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', email: '', password: '', skills: '', timezone: 'Asia/Dhaka', utcOffset: 6 });
+  const [captcha, setCaptcha] = useState(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
+  async function loadCaptcha() {
+    try { setCaptcha(await api.captcha()); setCaptchaAnswer(''); }
+    catch { setCaptcha(null); }
+  }
+  // Fresh security question whenever the form opens or switches mode.
+  useEffect(() => { loadCaptcha(); }, [mode]);
   async function submit(e) {
     e.preventDefault();
     setError(''); setBusy(true);
     try {
+      const captchaBody = captcha ? { captchaId: captcha.captchaId, captchaAnswer } : {};
       const data = mode === 'login'
-        ? await api.login({ email: form.email, password: form.password })
+        ? await api.login({ email: form.email, password: form.password, ...captchaBody })
         : await api.register({ name: form.name, email: form.email, password: form.password,
-            skills: form.skills.split(',').map((s) => s.trim()).filter(Boolean), timezone: form.timezone, utcOffset: Number(form.utcOffset) });
+            skills: form.skills.split(',').map((s) => s.trim()).filter(Boolean), timezone: form.timezone, utcOffset: Number(form.utcOffset), ...captchaBody });
       saveAuth(data.token, data.user);
       onAuth(data.user);
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
+    } catch (err) {
+      setError(err.message);
+      if (err.code === 'CAPTCHA_FAILED') loadCaptcha();
+    } finally { setBusy(false); }
   }
   return (
     <section aria-labelledby="login-title">
@@ -44,6 +56,10 @@ export default function Login({ onAuth }) {
         </>)}
         <label htmlFor="email">Email<input id="email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required autoComplete="email" /></label>
         <label htmlFor="password">Password (at least 8 characters)<input id="password" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} required minLength={8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
+        <label htmlFor="captcha">Security check: {captcha ? captcha.question : 'Loading…'}
+          <input id="captcha" value={captchaAnswer} onChange={(e) => setCaptchaAnswer(e.target.value)} required inputMode="numeric" autoComplete="off" placeholder="Your answer" />
+        </label>
+        <p><button type="button" className="linklike" onClick={loadCaptcha}>New security question</button></p>
         <button className="btn accent" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Register'}</button>
       </form>
       <p><button type="button" className="linklike" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>

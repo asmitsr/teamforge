@@ -6,7 +6,12 @@ const User = require('../models/User');
 const config = require('../config');
 const { validate } = require('../middleware/validate');
 const { authLimiter } = require('../middleware/rateLimit');
+const { verifyCaptcha } = require('../utils/captcha');
 
+const captchaFields = {
+  captchaId: z.string().min(1, 'Answer the security question'),
+  captchaAnswer: z.string().min(1, 'Answer the security question'),
+};
 const router = express.Router();
 const registerSchema = z.object({
   name: z.string().min(2, 'Name is too short').max(80),
@@ -16,8 +21,19 @@ const registerSchema = z.object({
   timezone: z.string().max(60).optional().default('Asia/Dhaka'),
   utcOffset: z.number().min(-12).max(14).optional().default(6),
   bio: z.string().max(300).optional().default(''),
+  ...captchaFields,
 });
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1), ...captchaFields });
+
+// CAPTCHA is checked before any credential work, so a wrong/expired answer
+// never reaches the user lookup or password check.
+function checkCaptcha(req, res) {
+  if (!verifyCaptcha(req.body.captchaId, req.body.captchaAnswer)) {
+    res.status(400).json({ error: { message: 'CAPTCHA verification failed', code: 'CAPTCHA_FAILED' } });
+    return false;
+  }
+  return true;
+}
 
 function publicUser(u) {
   return { id: u._id, name: u.name, email: u.email, skills: u.skills, timezone: u.timezone,
@@ -27,6 +43,7 @@ function signToken(u) { return jwt.sign({ sub: String(u._id) }, config.jwtSecret
 
 router.post('/register', authLimiter, validate(registerSchema), async (req, res, next) => {
   try {
+    if (!checkCaptcha(req, res)) return;
     const { name, email, password, skills, timezone, utcOffset, bio } = req.body;
     const existing = await User.findOne({ email }).lean();
     if (existing) return res.status(409).json({ error: { message: 'Email already registered', code: 'CONFLICT' } });
@@ -37,6 +54,7 @@ router.post('/register', authLimiter, validate(registerSchema), async (req, res,
 });
 router.post('/login', authLimiter, validate(loginSchema), async (req, res, next) => {
   try {
+    if (!checkCaptcha(req, res)) return;
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ error: { message: 'Wrong email or password', code: 'INVALID_CREDENTIALS' } });

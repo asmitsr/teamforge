@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { init, close, registerUser, createTeam, getTeam } = require('./setup');
+const { init, close, registerUser, createTeam, getTeam, getCaptcha } = require('./setup');
 const Team = require('../src/models/Team');
 const User = require('../src/models/User');
 
@@ -11,7 +11,8 @@ function auth(token) { return { Authorization: `Bearer ${token}` }; }
 
 describe('auth', () => {
   test('registers a user and returns a token, never the password hash', async () => {
-    const res = await api.post('/api/auth/register').send({ name: 'Asmit', email: 'asmit@test.dev', password: 'Password123', skills: ['React'] });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/register').send({ name: 'Asmit', email: 'asmit@test.dev', password: 'Password123', skills: ['React'], ...captcha });
     expect(res.status).toBe(201);
     expect(res.body.token).toBeTruthy();
     expect(res.body.user.email).toBe('asmit@test.dev');
@@ -19,31 +20,73 @@ describe('auth', () => {
   });
   test('rejects a duplicate email with 409', async () => {
     await registerUser(api, { email: 'dup@test.dev' });
-    const res = await api.post('/api/auth/register').send({ name: 'Dup', email: 'dup@test.dev', password: 'Password123' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/register').send({ name: 'Dup', email: 'dup@test.dev', password: 'Password123', ...captcha });
     expect(res.status).toBe(409);
   });
   test('rejects a short password with 400', async () => {
-    const res = await api.post('/api/auth/register').send({ name: 'Short', email: 'short@test.dev', password: '123' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/register').send({ name: 'Short', email: 'short@test.dev', password: '123', ...captcha });
     expect(res.status).toBe(400);
   });
   test('rejects a bad email with 400', async () => {
-    const res = await api.post('/api/auth/register').send({ name: 'Bad', email: 'not-an-email', password: 'Password123' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/register').send({ name: 'Bad', email: 'not-an-email', password: 'Password123', ...captcha });
     expect(res.status).toBe(400);
   });
   test('login succeeds with the right password', async () => {
     await registerUser(api, { email: 'login@test.dev' });
-    const res = await api.post('/api/auth/login').send({ email: 'login@test.dev', password: 'Password123' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/login').send({ email: 'login@test.dev', password: 'Password123', ...captcha });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
   });
   test('login fails with the wrong password', async () => {
     await registerUser(api, { email: 'login2@test.dev' });
-    const res = await api.post('/api/auth/login').send({ email: 'login2@test.dev', password: 'WrongPass1' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/login').send({ email: 'login2@test.dev', password: 'WrongPass1', ...captcha });
     expect(res.status).toBe(401);
   });
   test('protected route without a token is 401', async () => {
     const res = await api.get('/api/teams/mine');
     expect(res.status).toBe(401);
+  });
+});
+
+describe('captcha', () => {
+  test('GET /api/captcha returns an id and a question, never the answer', async () => {
+    const res = await api.get('/api/captcha');
+    expect(res.status).toBe(200);
+    expect(res.body.captchaId).toBeTruthy();
+    expect(res.body.question).toMatch(/^\d+ [+-] \d+ = \?$/);
+    expect(res.body.answer).toBeUndefined();
+  });
+  test('register without captcha fields is 400 VALIDATION_ERROR', async () => {
+    const res = await api.post('/api/auth/register').send({ name: 'NoCap', email: 'nocap@test.dev', password: 'Password123' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+  test('register with a wrong answer is 400 CAPTCHA_FAILED and creates no user', async () => {
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/register').send({ name: 'Wrong', email: 'wrongcap@test.dev', password: 'Password123', captchaId: captcha.captchaId, captchaAnswer: String(Number(captcha.captchaAnswer) + 1) });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('CAPTCHA_FAILED');
+    expect(await User.findOne({ email: 'wrongcap@test.dev' }).lean()).toBeNull();
+  });
+  test('a captcha is one-time use: the same id twice fails the second time', async () => {
+    const captcha = await getCaptcha(api);
+    const first = await api.post('/api/auth/register').send({ name: 'Once', email: 'once@test.dev', password: 'Password123', ...captcha });
+    expect(first.status).toBe(201);
+    const second = await api.post('/api/auth/register').send({ name: 'Once', email: 'once@test.dev', password: 'Password123', ...captcha });
+    expect(second.status).toBe(400);
+    expect(second.body.error.code).toBe('CAPTCHA_FAILED');
+  });
+  test('login with a wrong answer is 400 CAPTCHA_FAILED before the password check', async () => {
+    await registerUser(api, { email: 'login3@test.dev' });
+    const captcha = await getCaptcha(api);
+    const res = await api.post('/api/auth/login').send({ email: 'login3@test.dev', password: 'WrongPass1', captchaId: captcha.captchaId, captchaAnswer: String(Number(captcha.captchaAnswer) + 1) });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('CAPTCHA_FAILED');
   });
 });
 
