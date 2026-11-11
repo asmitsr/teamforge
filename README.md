@@ -16,7 +16,7 @@ last seat at the same instant and **exactly one** gets it — proven by an autom
 - Teammate suggestions ranked by complementary skills (60%) + timezone overlap (40%)
 - Audit log of every team change (who, what, when)
 - Idempotent mutations (safe double-clicks / retries), JWT auth, rate limits, zod validation
-- 36 API tests including a real 50-way race test, running in GitHub Actions
+- 41 API tests including a real 50-way race test, running in GitHub Actions
 - Seed script: 10,000 users + 2,000 teams in 3.2s (verifier re-run) · Load test: board p95 **72.3ms** at 100 concurrent users (target < 200ms, verifier re-run 8 Nov 2026, sandbox — see docs/LOAD_TEST_REPORT.md) · Chaos test: SIGKILL mid-join, nothing corrupted
 
 ## Run it in 5 minutes
@@ -25,7 +25,7 @@ last seat at the same instant and **exactly one** gets it — proven by an autom
 # 1. Needs Node 20+ and (for the server) a MongoDB replica set.
 #    Locally we use an in-memory replica set — no Atlas account needed.
 cd server && npm install
-npm test            # 36 tests, ~25s (first run downloads a MongoDB binary once)
+npm test            # 41 tests, ~25s (first run downloads a MongoDB binary once)
 npm run seed:memory # 10,000 users + 2,000 teams (demo accounts below)
 npm start           # server on http://localhost:5000
 
